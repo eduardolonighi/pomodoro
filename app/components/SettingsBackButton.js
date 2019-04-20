@@ -7,7 +7,7 @@ export default class SettingsButton extends Component {
     return (
       <View style={styles.container}>
         <TouchableOpacity onPress={this.props.onPress}>
-          <Ionicons name={"md-settings"} size={45} color="#3f2d20ff" />
+          <Ionicons name={"md-arrow-round-back"} size={45} color="#3f2d20ff" />
         </TouchableOpacity>
       </View>
     );

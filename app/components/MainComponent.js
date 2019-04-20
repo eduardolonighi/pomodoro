@@ -1,12 +1,11 @@
 import React, { Component } from "react";
-import { StyleSheet, View, BackHandler } from "react-native";
+import { StyleSheet, View, BackHandler, AsyncStorage } from "react-native";
 
 import { timeFormat, vibrate } from "../utils";
 
 import Counter from "./Counter";
 import StartButton from "./StartButton";
 import ResetButton from "./ResetButton";
-import PausedIcon from "./PausedIcon";
 import SettingsButton from "./SettingsButton";
 import SettingsInput from "./SettingsInput";
 
@@ -34,13 +33,41 @@ export default class MainComponent extends Component {
   }
 
   componentWillMount() {
-    //TODO: load settings from asyncStorage
+    this.loadSettings();
     BackHandler.addEventListener("hardwareBackPress", this.handleBackPress);
   }
 
   componentWillUnmount() {
     BackHandler.removeEventListener("hardwareBackPress", this.handleBackPress);
   }
+
+  loadSettings = async () => {
+    try {
+      const response = await AsyncStorage.getItem("timers");
+      if (response !== null) {
+        let data = JSON.parse(response);
+        this.setState({
+          workTimer: data.workTimer,
+          breakTimer: data.breakTimer
+        });
+        // console.log(data);
+      }
+    } catch (error) {
+      alert(error);
+    }
+  };
+
+  saveSettings = async () => {
+    let timers = {
+      workTimer: this.state.workTimer,
+      breakTimer: this.state.breakTimer
+    };
+    try {
+      await AsyncStorage.setItem("timers", JSON.stringify(timers));
+    } catch (error) {
+      alert(error);
+    }
+  };
 
   handleBackPress = () => {
     if (this.state.timerState === RUNING) {
@@ -70,7 +97,7 @@ export default class MainComponent extends Component {
       let remaining = this.state.remaining - 1;
       this.setState({ remaining: remaining });
       if (this.state.remaining <= 0) {
-        // vibrate();
+        vibrate();
         if (this.state.timer === WORK) {
           this.setState({ timer: BREAK, remaining: this.state.breakTimer });
         } else {
@@ -101,21 +128,19 @@ export default class MainComponent extends Component {
   };
 
   settingsHandler = newState => {
-    console.log(newState);
-    this.setState({
-      workTimer: parseInt(newState.workTime) * 60,
-      breakTimer: parseInt(newState.breakTime) * 60
-    });
-    this.setState({ timerState: STOPED });
-    //TODO: save settings on asynstorage
+    this.setState(
+      {
+        workTimer: parseInt(newState.workTime) * 60,
+        breakTimer: parseInt(newState.breakTime) * 60,
+        timerState: STOPED
+      },
+      () => this.saveSettings()
+    );
   };
 
   backgroundColor = () => {
-    if (this.state.timerState === STOPED || this.state.timerState === SETTINGS)
-      // return { backgroundColor: "#fff" };
-      return { backgroundColor: "#00E676" };
-    if (this.state.timer === WORK) return { backgroundColor: "#00E676" };
     if (this.state.timer === BREAK) return { backgroundColor: "#EF5350" };
+    return { backgroundColor: "#00E676" };
   };
 
   //navigation
@@ -141,11 +166,11 @@ export default class MainComponent extends Component {
       case PAUSED:
         return (
           <View style={styles.container}>
-            <PausedIcon />
             <Counter
               onPress={() => this.run()}
               minutes={remaining.minutes}
               seconds={remaining.seconds}
+              paused={true}
             />
             <ResetButton onPress={() => this.stop()} />
           </View>
